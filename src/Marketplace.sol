@@ -73,7 +73,7 @@ contract Marketplace is IMarketplace {
         );
 
         // check if borrower is a Safe with the right guard
-        require(isGuardEnabled(msg.sender), "Borrower is not a Safe wallet with Pinky Guard.");
+        // require(isGuardEnabled(msg.sender), "Borrower is not a Safe wallet with Pinky Guard.");
 
         // check if correct amount of eth has been sent
         uint256 totalPrice = lendData.pricePerDay * lendData.duration;
