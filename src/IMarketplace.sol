@@ -1,10 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.13;
 
 interface IMarketplace {
-    event Lend(address collectionAddress, uint256 tokenID, address owner, uint256 duration, uint256 pricePerDay);
-    event Rent(address collectionAddress, uint256 tokenID, address borrower, uint256 startingDate);
-    event DeleteLend(address collectionAddress, uint256 tokenID);
-    event DeleteRent(address collectionAddress, uint256 tokenID);
+    event Lend(
+        address indexed collectionAddress,
+        uint256 indexed tokenID,
+        address indexed owner,
+        uint256 duration,
+        uint256 pricePerDay
+    );
+    event Rent(
+        address indexed collectionAddress, uint256 indexed tokenID, address indexed borrower, uint256 startingDate
+    );
+    event DeleteLend(address indexed collectionAddress, uint256 indexed tokenID);
+    event DeleteRent(address indexed collectionAddress, uint256 indexed tokenID);
 
     struct LendData {
         address owner;
