@@ -2,30 +2,13 @@
 pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "./IMarketplace.sol";
 
 // NFT Lending protocol leveraging account abstraction features to allow:
 // - true ownership & asset securing by smart contract wallet
 // - no collateral & no escrow
 // - peer to peer matching for the offers
-contract Marketplace {
-    event Lend(address collectionAddress, uint256 tokenID, address owner, uint256 duration, uint256 pricePerDay);
-    event Rent(address collectionAddress, uint256 tokenID, address borrower, uint256 startingDate);
-    event DeleteLend(address collectionAddress, uint256 tokenID);
-    event DeleteRent(address collectionAddress, uint256 tokenID);
-
-    struct LendData {
-        address owner;
-        address collectionAddress;
-        uint256 tokenID;
-        uint256 duration; // in day
-        uint256 pricePerDay; // in wei
-    }
-
-    struct RentData {
-        address borrower;
-        uint256 startingDate; // timestamp
-    }
-
+contract Marketplace is IMarketplace {
     // Lendings and Rentings are referenced by a common ID, which is
     // a hash of the NFT collection address & the token ID.
     // This way, only one lending offer can exist per token.
@@ -87,6 +70,7 @@ contract Marketplace {
         // register the rent & send the nft
         // NB: safeTransferFrom() checks if recipient is a ERC721Receiver, but it adds a reentrancy vulnerability
         RentData memory rentData = RentData(msg.sender, block.timestamp);
+        // todo: add rented nft data in borrower's guard
         IERC721(collectionAddress).safeTransferFrom(owner, msg.sender, tokenID);
         (bool sent, bytes memory data) = lendData.owner.call{value: msg.value}("");
         require(sent, "Failed to send Ether to NFT owner");
@@ -113,6 +97,7 @@ contract Marketplace {
         _deleteOffer(lendingID);
         emit DeleteLend(collectionAddress, tokenID);
         emit DeleteRent(collectionAddress, tokenID);
+        // todo: remove rented nft data from borrower's guard
         IERC721(collectionAddress).safeTransferFrom(rentData.borrower, lendData.owner, tokenID);
     }
 
