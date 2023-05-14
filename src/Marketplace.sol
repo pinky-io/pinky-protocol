@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "./IMarketplace.sol";
-import "./interfaces/IStorageAccessible.sol";
-
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+
+import "./IMarketplace.sol";
+import "./interfaces/IStorageAccessible.sol";
+import "./interfaces/IPinkyGuard.sol";
 
 // NFT Lending protocol leveraging account abstraction features to allow:
 // - true ownership & asset securing by smart contract wallet
@@ -73,7 +74,7 @@ contract Marketplace is IMarketplace {
         );
 
         // check if borrower is a Safe with the right guard
-        // require(isGuardEnabled(msg.sender), "Borrower is not a Safe wallet with Pinky Guard.");
+        require(isGuardEnabled(msg.sender), "Borrower is not a Safe wallet with Pinky Guard.");
 
         // check if correct amount of eth has been sent
         uint256 totalPrice = lendData.pricePerDay * lendData.duration;
@@ -81,7 +82,10 @@ contract Marketplace is IMarketplace {
 
         // register the rent & send the nft
         RentData memory rentData = RentData(msg.sender, block.timestamp);
-        // todo: add rented nft data in borrower's guard
+        // add rented nft data in borrower's guard
+        address guard = getGuard(msg.sender);
+        IPinkyGuard(guard).addRent(collectionAddress, tokenID);
+
         // NB: safeTransferFrom() checks if recipient is a ERC721Receiver, but it adds a reentrancy vulnerability
         IERC721(collectionAddress).safeTransferFrom(owner, msg.sender, tokenID);
         (bool sent, bytes memory data) = lendData.owner.call{value: msg.value}("");
@@ -104,7 +108,10 @@ contract Marketplace is IMarketplace {
         _deleteOffer(lendingID);
         emit DeleteLend(collectionAddress, tokenID);
         emit DeleteRent(collectionAddress, tokenID);
-        // todo: remove rented nft data from borrower's guard
+        // Remove rented nft data from borrower's guard
+        address guard = getGuard(msg.sender);
+        IPinkyGuard(guard).deleteRent(collectionAddress, tokenID);
+
         IERC721(collectionAddress).safeTransferFrom(rentData.borrower, lendData.owner, tokenID);
     }
 
@@ -138,26 +145,25 @@ contract Marketplace is IMarketplace {
         //     return false;
         // }
 
-        // has a Pinky guard address stored at index GUARD_STORAGE_SLOT
-        bytes32 GUARD_STORAGE_SLOT = 0x4a204f620c8c5ccdca3fd54d003badd85ba500436a431f0cbda4f558c93c34c8;
-        bytes memory guardAddressData = IStorageAccessible(borrower).getStorageAt(uint256(GUARD_STORAGE_SLOT), 1);
-        address guardAddress = bytesToAddress(guardAddressData);
-        if (IERC165(guardAddress).supportsInterface(bytes4(0))) {
-            // todo: add Pinky interfaceId
-            return false;
-        }
+        // has a Pinky guard
+        address guardAddress = getGuard(borrower);
+        return IERC165(guardAddress).supportsInterface(bytes4(0x9a9d78ed));
+    }
 
-        return true;
+    function _deleteOffer(bytes32 lendingID) internal {
+        delete lendings[lendingID];
+        delete rentings[lendingID];
+    }
+
+    function getGuard(address wallet) internal view returns (address) {
+        bytes32 GUARD_STORAGE_SLOT = 0x4a204f620c8c5ccdca3fd54d003badd85ba500436a431f0cbda4f558c93c34c8;
+        bytes memory guardAddressData = IStorageAccessible(wallet).getStorageAt(uint256(GUARD_STORAGE_SLOT), 1);
+        return bytesToAddress(guardAddressData);
     }
 
     function bytesToAddress(bytes memory bys) private pure returns (address addr) {
         assembly {
             addr := mload(add(bys, 20))
         }
-    }
-
-    function _deleteOffer(bytes32 lendingID) internal {
-        delete lendings[lendingID];
-        delete rentings[lendingID];
     }
 }
