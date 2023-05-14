@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 
+// import "./external/SafeDeployer.sol"; // conflict with erc165.sol between safe-contracts and openzeppelin
 import "./external/MintableNFT.sol";
 import "../src/IMarketplace.sol";
 import "../src/Marketplace.sol";
@@ -22,6 +23,13 @@ contract MarketplaceTest is Test {
         hoax(makeAddr("user3"));
         nft.safeMint(3);
     }
+
+    // error 2333 is too strong for me :(
+    // function testDeploySafe() public {
+    //     SafeDeployer deployer = new SafeDeployer();
+    //     address[] memory owners = new Address[](1);
+    //     address safe = deployer.deploySafe(_owners, 1);
+    // }
 
     function testLend() public {
         uint256 duration = 2; // days
